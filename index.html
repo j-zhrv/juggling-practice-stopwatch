@@ -525,8 +525,9 @@
       if (!resultsEl) return;
       resultsEl.innerHTML = '';
       const fragment = document.createDocumentFragment();
-      const totalEntries = resultsData.length;
-      resultsData.forEach((entry, index) => {
+      const modeData = getCurrentModeData();
+      const totalEntries = modeData.length;
+      modeData.forEach((entry, index) => {
         const tr = document.createElement('tr');
         tr.dataset.index = String(index);
 
@@ -573,15 +574,17 @@
         ms: Math.max(0, Math.floor(ms)),
         stamp: new Date().toISOString(),
       };
-      resultsData.unshift(entry);
+      const modeData = getCurrentModeData();
+      modeData.unshift(entry);
       persistResults();
       renderResults();
       window.scrollTo(0, 0);
     }
 
     function removeResult(index) {
-      if (!Number.isInteger(index) || index < 0 || index >= resultsData.length) return;
-      resultsData.splice(index, 1);
+      const modeData = getCurrentModeData();
+      if (!Number.isInteger(index) || index < 0 || index >= modeData.length) return;
+      modeData.splice(index, 1);
       persistResults();
       renderResults();
     }
