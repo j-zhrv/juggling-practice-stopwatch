@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Секундомер — Space = старт/пауза, Esc = запись и сброс</title>
+  <style>
+    :root {
+      --bg: #0f1220;
+      --card: #171a2b;
+      --muted: #8a91b4;
+      --text: #e9ecff;
+      --accent: #7aa2ff;
+      --ring: #2c3356;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: radial-gradient(1200px 800px at 70% -10%, #1a1f3a 0%, var(--bg) 45%);
+      color: var(--text);
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+    .wrap {
+      width: min(880px, 100%);
+      display: grid;
+      gap: 18px;
+    }
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01));
+      border: 1px solid var(--ring);
+      border-radius: 16px;
+      padding: 22px;
+      box-shadow: var(--shadow);
+    }
+    .display {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .time {
+      font-variant-numeric: tabular-nums lining-nums;
+      font-weight: 700;
+      letter-spacing: .5px;
+      line-height: 1;
+      font-size: clamp(40px, 10vw, 84px);
+      user-select: none;
+    }
+    .badges {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .badge {
+      border: 1px dashed var(--ring);
+      color: var(--muted);
+      padding: 8px 10px;
+      border-radius: 12px;
+      font-size: 14px;
+      backdrop-filter: blur(6px);
+    }
+    .controls { display:flex; gap:10px; flex-wrap: wrap; }
+    button {
+      background: var(--card);
+      color: var(--text);
+      border: 1px solid var(--ring);
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: transform .05s ease, background .2s ease, border-color .2s ease;
+    }
+    button:active { transform: translateY(1px); }
+    button.primary { border-color: var(--accent); }
+
+    table { width: 100%; border-collapse: collapse; }
+    thead th {
+      text-align: left;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--muted);
+      padding: 10px 8px;
+      border-bottom: 1px solid var(--ring);
+    }
+    tbody td {
+      padding: 10px 8px;
+      border-bottom: 1px dashed var(--ring);
+    }
+    tbody tr:last-child td { border-bottom: none; }
+    .muted { color: var(--muted); }
+      /* Row delete icon button */
+    button.icon { background: transparent !important; border: none !important; box-shadow: none !important; padding: 4px 8px !important; border-radius: 8px !important; cursor: pointer; color: var(--muted); font-size: 16px; line-height: 1; }
+    button.icon:hover { background: rgba(255,255,255,.06); color: #ff8a8a; }
+    button.icon:active { transform: none !important; }
+      /* Countdown overlay */
+    .countdown-overlay { position:absolute; inset: 0; display:flex; align-items:center; justify-content:center; background: linear-gradient(180deg, rgba(0,0,0,.18), rgba(0,0,0,.12)); border-radius: 16px; pointer-events: none; }
+    .countdown-digit { font-variant-numeric: tabular-nums; font-weight: 800; letter-spacing: .02em; font-size: clamp(48px, 15vw, 140px); color: var(--text); text-shadow: 0 4px 20px rgba(0,0,0,.45); }
+    .controls .countdown { display:flex; align-items:center; gap:8px; margin-left: auto; color: var(--muted); border: 1px dashed var(--ring); padding: 8px 10px; border-radius: 12px; }
+    .controls .countdown input[type="range"] { accent-color: var(--accent); }
+    .card { position: relative; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="display">
+        <div id="time" class="time" aria-live="polite" aria-atomic="true">00:00:00.000</div>
+        <div class="badges">
+          <div class="badge">Пробел — старт/пауза</div>
+          <div class="badge">Esc — записать результат и сбросить</div>
+        </div>
+      </div>
+      <div class="controls" style="margin-top: 14px">
+        <button id="btnToggle" class="primary" title="Пробел">▶️ Старт</button>
+        <button id="btnReset" title="Esc">⏹ Записать и сбросить</button>
+        <button id="btnClear">🧹 Очистить таблицу</button>
+        <label class="countdown" title="Отсчёт запуска (3–5 сек)">
+          Отсчёт перед стартом:
+          <input type="range" id="prestart" min="3" max="5" step="1" value="3">
+          <output id="prestartOut">3</output> сек
+        </label>
+      </div>
+      <div id="cdOverlay" class="countdown-overlay" hidden><div class="countdown-digit" id="cdText">3</div></div>
+    </div>
+
+    <div class="card">
+      <div class="muted" style="margin-bottom:8px">Результаты (каждый Esc добавляет запись):</div>
+      <table>
+        <thead>
+          <tr>
+            <th style="width:80px">№</th>
+            <th>Результат</th>
+            <th style="width:220px">Метка времени</th>
+            <th style="width:70px; text-align:center">×</th>
+          </tr>
+        </thead>
+        <tbody id="results"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    // --- Stopwatch logic ---
+    let running = false;
+    let startTime = 0;      // perf.now() when started
+    let elapsedMs = 0;      // accumulated time in ms
+    let rafId = null;
+    let counter = 0;        // row numbering
+
+    const timeEl = document.getElementById('time');
+    const resultsEl = document.getElementById('results');
+    const btnToggle = document.getElementById('btnToggle');
+    const btnReset = document.getElementById('btnReset');
+    const btnClear = document.getElementById('btnClear');
+
+    // Pre-start countdown controls
+    const prestartRange = document.getElementById('prestart');
+    const prestartOut = document.getElementById('prestartOut');
+    const cdOverlay = document.getElementById('cdOverlay');
+    const cdText = document.getElementById('cdText');
+    let isCountingDown = false;
+    let cdRafId = null;
+    let cdStart = 0;
+    let cdDurationMs = 0;
+    if (prestartOut && prestartRange) prestartOut.textContent = prestartRange.value;
+    if (prestartRange) prestartRange.addEventListener('input', () => { if (prestartOut) prestartOut.textContent = prestartRange.value; });
+
+    function pad(n, len=2) { return String(n).padStart(len, '0'); }
+    function formatTime(ms) {
+      ms = Math.max(0, Math.floor(ms));
+      const milli = ms % 1000;
+      const totalSec = Math.floor(ms / 1000);
+      const h = Math.floor(totalSec / 3600);
+      const m = Math.floor((totalSec % 3600) / 60);
+      const s = totalSec % 60;
+      return `${pad(h)}:${pad(m)}:${pad(s)}.${String(milli).padStart(3,'0')}`;
+    }
+
+    function render() {
+      timeEl.textContent = formatTime(elapsedMs);
+    }
+
+    function tick(now) {
+      elapsedMs = now - startTime;
+      render();
+      rafId = requestAnimationFrame(tick);
+    }
+
+    function start() {
+      running = true;
+      startTime = performance.now() - elapsedMs; // resume from paused value
+      rafId = requestAnimationFrame(tick);
+      btnToggle.textContent = '⏸ Пауза';
+      btnToggle.classList.remove('primary');
+    }
+
+    function pause() {
+      running = false;
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      rafId = null;
+      render();
+      btnToggle.textContent = '▶️ Старт';
+      btnToggle.classList.add('primary');
+    }
+
+    function toggle() {
+      if (isCountingDown) {
+        // Space during countdown: skip countdown and start immediately
+        cancelCountdown();
+        start();
+        return;
+      }
+      if (running) {
+        pause();
+      } else {
+        if (elapsedMs === 0) {
+          const secs = prestartRange ? parseInt(prestartRange.value, 10) : 0;
+          if (secs && secs > 0) {
+            beginCountdown(secs);
+          } else {
+            start();
+          }
+        } else {
+          start();
+        }
+      }
+    }
+
+    function resetAndLog() {
+      cancelCountdown();
+      // Log current elapsed (even if 0), then reset to zero and pause
+      addResultRow(elapsedMs);
+      elapsedMs = 0;
+      pause();
+      render();
+    }
+
+    function addResultRow(ms) {
+      counter += 1;
+      const tr = document.createElement('tr');
+      const tdN = document.createElement('td');
+      const tdTime = document.createElement('td');
+      const tdStamp = document.createElement('td');
+      const tdDel = document.createElement('td');
+      tdN.textContent = counter;
+      tdTime.textContent = formatTime(ms);
+      const stamp = new Date();
+      tdStamp.textContent = stamp.toLocaleString();
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'icon del';
+      btn.setAttribute('aria-label', 'Удалить строку');
+      btn.textContent = '×';
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        tr.remove();
+        reindexRows();
+      });
+      tdDel.style.textAlign = 'center';
+      tdDel.appendChild(btn);
+      tr.appendChild(tdN);
+      tr.appendChild(tdTime);
+      tr.appendChild(tdStamp);
+      tr.appendChild(tdDel);
+      resultsEl.appendChild(tr);
+      // Scroll to bottom if overflowing
+      tr.scrollIntoView({ block: 'nearest' });
+    }
+
+    function reindexRows() {
+      const rows = resultsEl.querySelectorAll('tr');
+      rows.forEach((row, i) => {
+        const nCell = row.firstElementChild;
+        if (nCell) nCell.textContent = i + 1;
+      });
+      counter = rows.length;
+    }
+
+    function clearResults() {
+      resultsEl.innerHTML = '';
+      counter = 0;
+    }
+
+    function beginCountdown(secs) {
+      if (!cdOverlay) { start(); return; }
+      isCountingDown = true;
+      cdDurationMs = Math.max(0, (secs|0) * 1000);
+      cdStart = performance.now();
+      cdOverlay.hidden = false;
+      updateCountdownText(cdDurationMs);
+      cdRafId = requestAnimationFrame(countdownTick);
+    }
+    function countdownTick(now) {
+      const elapsed = now - cdStart;
+      const remain = Math.max(0, cdDurationMs - elapsed);
+      updateCountdownText(remain);
+      if (remain <= 0) {
+        cancelCountdown();
+        start();
+        return;
+      }
+      cdRafId = requestAnimationFrame(countdownTick);
+    }
+    function updateCountdownText(remainMs) {
+      if (!cdText) return;
+      // Show only 3..2..1 (no "Старт!" overlay to avoid sticking)
+      if (remainMs <= 0) return;
+      const remainingWhole = Math.max(1, Math.ceil(remainMs / 1000));
+      cdText.textContent = String(remainingWhole);
+    }
+    function cancelCountdown() {
+      if (!isCountingDown) return;
+      isCountingDown = false;
+      if (cdRafId !== null) cancelAnimationFrame(cdRafId);
+      cdRafId = null;
+      if (cdOverlay) { cdOverlay.hidden = true; }
+      if (cdText) { cdText.textContent = ''; }
+    }
+
+    // --- Keyboard controls ---
+    function isTypingTarget(el) {
+      if (!el) return false;
+      const tag = (el.tagName || '').toUpperCase();
+      if (el.isContentEditable) return true;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || tag === 'BUTTON') return true;
+      return false;
+    }
+    window.addEventListener('keydown', (e) => {
+      // Ignore key repeat to avoid flicker on long press
+      if (e.repeat) return;
+      // Ignore shortcuts when user interacts with inputs/controls (e.g., range slider)
+      if (isTypingTarget(e.target)) return;
+      if (e.code === 'Space' || e.key === ' ' || e.key === 'Spacebar') {
+        e.preventDefault(); // prevent page scroll on space
+        toggle();
+      } else if (e.key === 'Escape' || e.code === 'Escape') {
+        e.preventDefault();
+        resetAndLog();
+      }
+    }, { passive: false });
+
+    // --- Buttons as mouse fallback ---
+    btnToggle.addEventListener('click', toggle);
+    btnReset.addEventListener('click', resetAndLog);
+    btnClear.addEventListener('click', clearResults);
+
+    // Initial render
+    render();
+  </script>
+</body>
+</html>
