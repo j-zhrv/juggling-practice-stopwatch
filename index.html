@@ -135,6 +135,36 @@
           <div class="badge">Пробел (в паузе) — запись и сброс</div>
         </div>
       </div>
+      <div class="mode-bar">
+        <div class="mode-selectors">
+          <label>
+            <span>Количество мячей</span>
+            <select id="ballsMode">
+              <option value="2">2 мяча</option>
+              <option value="3">3 мяча</option>
+              <option value="4">4 мяча</option>
+            </select>
+          </label>
+          <label>
+            <span>Режим рук</span>
+            <select id="handsMode">
+              <option value="left">Только левой</option>
+              <option value="right">Только правой</option>
+              <option value="both">Двумя руками</option>
+            </select>
+          </label>
+          <label>
+            <span>Тип жонглирования</span>
+            <select id="styleMode">
+              <option value="clockwise">по часовой стрелке</option>
+              <option value="counterclockwise">против часовой стрелки</option>
+              <option value="mixed">mixed</option>
+              <option value="synchronous">синхронно</option>
+            </select>
+          </label>
+        </div>
+        <div id="modeSummary" class="mode-summary"></div>
+      </div>
       <div class="controls" style="margin-top: 14px">
         <button id="btnToggle" class="primary" title="Пробел">▶️ Старт</button>
         <button id="btnReset" title="Пробел после паузы">⟲ Записать и сбросить</button>
