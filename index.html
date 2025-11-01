@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Секундомер — Space = старт/пауза, Esc = запись и сброс</title>
+  <title>Секундомер — пробел: старт → стоп → запись</title>
   <style>
     :root {
       --bg: #0f1220;
@@ -114,13 +114,13 @@
       <div class="display">
         <div id="time" class="time" aria-live="polite" aria-atomic="true">00:00:00.000</div>
         <div class="badges">
-          <div class="badge">Пробел — старт/пауза</div>
-          <div class="badge">Esc — записать результат и сбросить</div>
+          <div class="badge">Пробел — старт</div>
+          <div class="badge">Пробел (в паузе) — запись и сброс</div>
         </div>
       </div>
       <div class="controls" style="margin-top: 14px">
         <button id="btnToggle" class="primary" title="Пробел">▶️ Старт</button>
-        <button id="btnReset" title="Esc">⏹ Записать и сбросить</button>
+        <button id="btnReset" title="Пробел после паузы">⟲ Записать и сбросить</button>
         <button id="btnClear">🧹 Очистить таблицу</button>
         <label class="countdown" title="Отсчёт запуска (3–5 сек)">
           Отсчёт перед стартом:
@@ -133,7 +133,7 @@
 
     <div class="card" id="resultsCard">
       <div class="card-header" style="margin-bottom:8px">
-        <div class="muted">Результаты (каждый Esc добавляет запись):</div>
+        <div class="muted">Результаты (каждый третий пробел добавляет запись):</div>
         <button id="btnDownload" type="button">📸 Скачать скрин таблицы</button>
       </div>
       <table>
@@ -196,6 +196,23 @@
       if (timeEl) timeEl.textContent = formatTime(elapsedMs);
     }
 
+    function updatePrimaryButton() {
+      if (!btnToggle) return;
+      btnToggle.classList.remove('primary');
+      if (running) {
+        btnToggle.textContent = '⏸ Пауза';
+        btnToggle.title = 'Пробел';
+      } else if (elapsedMs > 0) {
+        btnToggle.textContent = '💾 Записать и сбросить';
+        btnToggle.classList.add('primary');
+        btnToggle.title = 'Пробел (записать и сбросить)';
+      } else {
+        btnToggle.textContent = '▶️ Старт';
+        btnToggle.classList.add('primary');
+        btnToggle.title = 'Пробел';
+      }
+    }
+
     function tick(now) {
       elapsedMs = now - startTime;
       render();
@@ -206,10 +223,7 @@
       running = true;
       startTime = performance.now() - elapsedMs; // resume from paused value
       rafId = requestAnimationFrame(tick);
-      if (btnToggle) {
-        btnToggle.textContent = '⏸ Пауза';
-        btnToggle.classList.remove('primary');
-      }
+      updatePrimaryButton();
     }
 
     function pause() {
@@ -217,33 +231,30 @@
       if (rafId !== null) cancelAnimationFrame(rafId);
       rafId = null;
       render();
-      if (btnToggle) {
-        btnToggle.textContent = '▶️ Старт';
-        btnToggle.classList.add('primary');
-      }
+      updatePrimaryButton();
     }
 
-    function toggle() {
+    function handlePrimaryAction() {
       if (isCountingDown) {
         // Space during countdown: skip countdown and start immediately
         cancelCountdown();
         start();
         return;
       }
-      if (running) {
-        pause();
-      } else {
-        if (elapsedMs === 0) {
-          const secs = prestartRange ? parseInt(prestartRange.value, 10) : 0;
-          if (secs && secs > 0) {
-            beginCountdown(secs);
-          } else {
-            start();
-          }
+      if (!running && elapsedMs === 0) {
+        const secs = prestartRange ? parseInt(prestartRange.value, 10) : 0;
+        if (secs && secs > 0) {
+          beginCountdown(secs);
         } else {
           start();
         }
+        return;
       }
+      if (running) {
+        pause();
+        return;
+      }
+      resetAndLog();
     }
 
     function resetAndLog() {
@@ -252,7 +263,6 @@
       addResultEntry(elapsedMs);
       elapsedMs = 0;
       pause();
-      render();
     }
 
     function persistResults() {
@@ -468,23 +478,21 @@
       if (isTypingTarget(e.target)) return;
       if (e.code === 'Space' || e.key === ' ' || e.key === 'Spacebar') {
         e.preventDefault(); // prevent page scroll on space
-        toggle();
-      } else if (e.key === 'Escape' || e.code === 'Escape') {
-        e.preventDefault();
-        resetAndLog();
+        handlePrimaryAction();
       }
     }, { passive: false });
 
     restoreResultsFromStorage();
 
     // --- Buttons as mouse fallback ---
-    if (btnToggle) btnToggle.addEventListener('click', toggle);
+    if (btnToggle) btnToggle.addEventListener('click', handlePrimaryAction);
     if (btnReset) btnReset.addEventListener('click', resetAndLog);
     if (btnClear) btnClear.addEventListener('click', clearResults);
     if (btnDownload) btnDownload.addEventListener('click', downloadTableScreenshot);
 
     // Initial render
     render();
+    updatePrimaryButton();
   </script>
 </body>
 </html>
