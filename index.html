@@ -65,6 +65,8 @@
       backdrop-filter: blur(6px);
     }
     .controls { display:flex; gap:10px; flex-wrap: wrap; }
+    .card-header { display:flex; align-items:center; gap:12px; justify-content:space-between; flex-wrap:wrap; }
+    .card-header .muted { margin-bottom:0 !important; }
     button {
       background: var(--card);
       color: var(--text);
@@ -129,8 +131,11 @@
       <div id="cdOverlay" class="countdown-overlay" hidden><div class="countdown-digit" id="cdText">3</div></div>
     </div>
 
-    <div class="card">
-      <div class="muted" style="margin-bottom:8px">Результаты (каждый Esc добавляет запись):</div>
+    <div class="card" id="resultsCard">
+      <div class="card-header" style="margin-bottom:8px">
+        <div class="muted">Результаты (каждый Esc добавляет запись):</div>
+        <button id="btnDownload" type="button">📸 Скачать скрин таблицы</button>
+      </div>
       <table>
         <thead>
           <tr>
@@ -145,19 +150,24 @@
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" crossorigin="anonymous"></script>
   <script>
     // --- Stopwatch logic ---
     let running = false;
     let startTime = 0;      // perf.now() when started
     let elapsedMs = 0;      // accumulated time in ms
     let rafId = null;
-    let counter = 0;        // row numbering
-
     const timeEl = document.getElementById('time');
     const resultsEl = document.getElementById('results');
     const btnToggle = document.getElementById('btnToggle');
     const btnReset = document.getElementById('btnReset');
     const btnClear = document.getElementById('btnClear');
+    const btnDownload = document.getElementById('btnDownload');
+    const resultsCard = document.getElementById('resultsCard');
+    const downloadBtnDefaultText = btnDownload ? btnDownload.textContent : '';
+
+    const STORAGE_KEY = 'jpsw_results_v1';
+    let resultsData = [];
 
     // Pre-start countdown controls
     const prestartRange = document.getElementById('prestart');
@@ -183,7 +193,7 @@
     }
 
     function render() {
-      timeEl.textContent = formatTime(elapsedMs);
+      if (timeEl) timeEl.textContent = formatTime(elapsedMs);
     }
 
     function tick(now) {
@@ -196,8 +206,10 @@
       running = true;
       startTime = performance.now() - elapsedMs; // resume from paused value
       rafId = requestAnimationFrame(tick);
-      btnToggle.textContent = '⏸ Пауза';
-      btnToggle.classList.remove('primary');
+      if (btnToggle) {
+        btnToggle.textContent = '⏸ Пауза';
+        btnToggle.classList.remove('primary');
+      }
     }
 
     function pause() {
@@ -205,8 +217,10 @@
       if (rafId !== null) cancelAnimationFrame(rafId);
       rafId = null;
       render();
-      btnToggle.textContent = '▶️ Старт';
-      btnToggle.classList.add('primary');
+      if (btnToggle) {
+        btnToggle.textContent = '▶️ Старт';
+        btnToggle.classList.add('primary');
+      }
     }
 
     function toggle() {
@@ -235,56 +249,172 @@
     function resetAndLog() {
       cancelCountdown();
       // Log current elapsed (even if 0), then reset to zero and pause
-      addResultRow(elapsedMs);
+      addResultEntry(elapsedMs);
       elapsedMs = 0;
       pause();
       render();
     }
 
-    function addResultRow(ms) {
-      counter += 1;
-      const tr = document.createElement('tr');
-      const tdN = document.createElement('td');
-      const tdTime = document.createElement('td');
-      const tdStamp = document.createElement('td');
-      const tdDel = document.createElement('td');
-      tdN.textContent = counter;
-      tdTime.textContent = formatTime(ms);
-      const stamp = new Date();
-      tdStamp.textContent = stamp.toLocaleString();
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'icon del';
-      btn.setAttribute('aria-label', 'Удалить строку');
-      btn.textContent = '×';
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        tr.remove();
-        reindexRows();
-      });
-      tdDel.style.textAlign = 'center';
-      tdDel.appendChild(btn);
-      tr.appendChild(tdN);
-      tr.appendChild(tdTime);
-      tr.appendChild(tdStamp);
-      tr.appendChild(tdDel);
-      resultsEl.appendChild(tr);
-      // Scroll to bottom if overflowing
-      tr.scrollIntoView({ block: 'nearest' });
+    function persistResults() {
+      if (typeof localStorage === 'undefined') return;
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(resultsData));
+      } catch (err) {
+        console.warn('Не удалось сохранить результаты в localStorage', err);
+      }
     }
 
-    function reindexRows() {
-      const rows = resultsEl.querySelectorAll('tr');
-      rows.forEach((row, i) => {
-        const nCell = row.firstElementChild;
-        if (nCell) nCell.textContent = i + 1;
+    function renderResults({ scrollToEnd = false } = {}) {
+      if (!resultsEl) return;
+      resultsEl.innerHTML = '';
+      let lastRow = null;
+      resultsData.forEach((entry, index) => {
+        const tr = document.createElement('tr');
+        tr.dataset.index = String(index);
+
+        const tdN = document.createElement('td');
+        tdN.textContent = String(index + 1);
+
+        const tdTime = document.createElement('td');
+        tdTime.textContent = formatTime(entry.ms);
+
+        const tdStamp = document.createElement('td');
+        let stampText = '';
+        try {
+          const stampDate = entry.stamp ? new Date(entry.stamp) : new Date();
+          stampText = stampDate.toLocaleString();
+        } catch (err) {
+          stampText = entry.stamp || '';
+        }
+        tdStamp.textContent = stampText;
+
+        const tdDel = document.createElement('td');
+        tdDel.style.textAlign = 'center';
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'icon del';
+        btn.setAttribute('aria-label', 'Удалить строку');
+        btn.textContent = '×';
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const idx = parseInt(tr.dataset.index || '-1', 10);
+          removeResult(idx);
+        });
+        tdDel.appendChild(btn);
+
+        tr.appendChild(tdN);
+        tr.appendChild(tdTime);
+        tr.appendChild(tdStamp);
+        tr.appendChild(tdDel);
+        resultsEl.appendChild(tr);
+        lastRow = tr;
       });
-      counter = rows.length;
+
+      if (scrollToEnd && lastRow) {
+        lastRow.scrollIntoView({ block: 'nearest' });
+      }
+    }
+
+    function addResultEntry(ms) {
+      const entry = {
+        ms: Math.max(0, Math.floor(ms)),
+        stamp: new Date().toISOString(),
+      };
+      resultsData.push(entry);
+      persistResults();
+      renderResults({ scrollToEnd: true });
+    }
+
+    function removeResult(index) {
+      if (!Number.isInteger(index) || index < 0 || index >= resultsData.length) return;
+      resultsData.splice(index, 1);
+      persistResults();
+      renderResults();
     }
 
     function clearResults() {
-      resultsEl.innerHTML = '';
-      counter = 0;
+      resultsData = [];
+      if (typeof localStorage !== 'undefined') {
+        try {
+          localStorage.removeItem(STORAGE_KEY);
+        } catch (err) {
+          console.warn('Не удалось очистить результаты в localStorage', err);
+        }
+      }
+      renderResults();
+    }
+
+    function sanitizeStoredEntry(entry) {
+      if (!entry || typeof entry !== 'object') return null;
+      const ms = Number(entry.ms);
+      if (!Number.isFinite(ms)) return null;
+      const normalized = {
+        ms: Math.max(0, Math.floor(ms)),
+        stamp: typeof entry.stamp === 'string' ? entry.stamp : '',
+      };
+      return normalized;
+    }
+
+    function restoreResultsFromStorage() {
+      if (typeof localStorage === 'undefined') {
+        renderResults();
+        return;
+      }
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) {
+          renderResults();
+          return;
+        }
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) {
+          renderResults();
+          return;
+        }
+        const sanitized = parsed
+          .map((item) => {
+            try {
+              return sanitizeStoredEntry(item);
+            } catch (err) {
+              return null;
+            }
+          })
+          .filter(Boolean);
+        resultsData = sanitized;
+        renderResults();
+      } catch (err) {
+        console.warn('Не удалось прочитать результаты из localStorage', err);
+        resultsData = [];
+        renderResults();
+      }
+    }
+
+    async function downloadTableScreenshot() {
+      if (!btnDownload || !resultsCard) return;
+      if (typeof window.html2canvas !== 'function') {
+        alert('Скриншот недоступен: библиотека html2canvas не загрузилась.');
+        return;
+      }
+      btnDownload.disabled = true;
+      btnDownload.textContent = '⏳ Подготовка...';
+      try {
+        const canvas = await window.html2canvas(resultsCard, {
+          backgroundColor: '#0f1220',
+          scale: Math.min(window.devicePixelRatio || 1, 2),
+          useCORS: true,
+        });
+        const link = document.createElement('a');
+        const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+        link.download = `stopwatch-results-${stamp}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      } catch (err) {
+        console.error('Не удалось создать скриншот таблицы', err);
+        alert('Не удалось создать скриншот. Попробуйте снова.');
+      } finally {
+        btnDownload.disabled = false;
+        btnDownload.textContent = downloadBtnDefaultText || '📸 Скачать скрин таблицы';
+      }
     }
 
     function beginCountdown(secs) {
@@ -345,10 +475,13 @@
       }
     }, { passive: false });
 
+    restoreResultsFromStorage();
+
     // --- Buttons as mouse fallback ---
-    btnToggle.addEventListener('click', toggle);
-    btnReset.addEventListener('click', resetAndLog);
-    btnClear.addEventListener('click', clearResults);
+    if (btnToggle) btnToggle.addEventListener('click', toggle);
+    if (btnReset) btnReset.addEventListener('click', resetAndLog);
+    if (btnClear) btnClear.addEventListener('click', clearResults);
+    if (btnDownload) btnDownload.addEventListener('click', downloadTableScreenshot);
 
     // Initial render
     render();
