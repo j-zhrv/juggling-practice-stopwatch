@@ -119,15 +119,10 @@
     .card { position: relative; }
 
     .header-actions { display:flex; gap:12px; flex-wrap:wrap; align-items:center; justify-content:flex-end; }
-    .mode-bar { display:flex; flex-wrap:wrap; gap:16px; align-items:flex-end; justify-content:space-between; margin-top:16px; }
-    .mode-selectors { display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; }
-    .mode-selectors label { display:flex; flex-direction:column; gap:6px; font-size:12px; color: var(--muted); }
-    .mode-selectors select { min-width:140px; }
-    .mode-summary { font-size:13px; color: var(--muted); margin-left:auto; align-self:center; flex:1 1 220px; text-align:right; }
-    @media (max-width: 640px) {
-      .mode-bar { flex-direction:column; align-items:stretch; }
-      .mode-summary { margin-left:0; text-align:left; }
-    }
+    .mode-controls { display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; }
+    .mode-controls label { display:flex; flex-direction:column; gap:6px; font-size:12px; color: var(--muted); }
+    .mode-controls select { min-width:140px; }
+    .mode-summary { font-size:13px; margin-top:6px; }
   </style>
 </head>
 <body>
@@ -197,8 +192,29 @@
 
     <div class="card" id="resultsCard">
       <div class="card-header" style="margin-bottom:8px">
-        <div class="muted">Результаты (каждый третий пробел добавляет запись):</div>
+        <div>
+          <div class="muted">Результаты (каждый третий пробел добавляет запись):</div>
+          <div id="modeSummary" class="muted mode-summary"></div>
+        </div>
         <div class="header-actions">
+          <div class="mode-controls">
+            <label>
+              <span>Количество мячей</span>
+              <select id="ballsMode">
+                <option value="2">2 мяча</option>
+                <option value="3">3 мяча</option>
+                <option value="4">4 мяча</option>
+              </select>
+            </label>
+            <label>
+              <span>Режим рук</span>
+              <select id="handsMode">
+                <option value="left">Только левой</option>
+                <option value="right">Только правой</option>
+                <option value="both">Двумя руками</option>
+              </select>
+            </label>
+          </div>
           <button id="btnDownload" type="button">📸 Скачать скрин таблицы</button>
         </div>
       </div>
@@ -232,7 +248,6 @@
     const resultsCard = document.getElementById('resultsCard');
     const ballsSelect = document.getElementById('ballsMode');
     const handsSelect = document.getElementById('handsMode');
-    const styleSelect = document.getElementById('styleMode');
     const modeSummaryEl = document.getElementById('modeSummary');
     const downloadBtnDefaultText = btnDownload ? btnDownload.textContent : '';
 
@@ -244,18 +259,10 @@
       { value: 'right', label: 'только правой рукой' },
       { value: 'both', label: 'двумя руками' },
     ];
-    const MODE_STYLE_OPTIONS = [
-      { value: 'clockwise', label: 'по часовой стрелке' },
-      { value: 'counterclockwise', label: 'против часовой стрелки' },
-      { value: 'mixed', label: 'mixed' },
-      { value: 'synchronous', label: 'синхронно' },
-    ];
     const MODE_DEFAULT_BALLS = 3;
     const MODE_DEFAULT_HANDS = 'both';
-    const MODE_DEFAULT_STYLE = 'mixed';
     let selectedBalls = MODE_DEFAULT_BALLS;
     let selectedHands = MODE_DEFAULT_HANDS;
-    let selectedStyle = MODE_DEFAULT_STYLE;
     let allResultsByMode = {};
     let resultsData = [];
     let minRecordSeconds = 10;
@@ -294,8 +301,8 @@
       if (prestartOut) prestartOut.textContent = String(snapped);
     }
 
-    function buildModeKey(balls, hands, style) {
-      return `${balls}b_${hands}_${style}`;
+    function buildModeKey(balls, hands) {
+      return `${balls}b_${hands}`;
     }
 
     function isValidBalls(value) {
@@ -304,23 +311,6 @@
 
     function isValidHands(value) {
       return MODE_HAND_OPTIONS.some((opt) => opt.value === value);
-    }
-
-    function isValidStyle(value) {
-      return MODE_STYLE_OPTIONS.some((opt) => opt.value === value);
-    }
-
-    function parseModeKey(key) {
-      if (typeof key !== 'string') return null;
-      const match = key.match(/^(\d+)b_([a-z]+)(?:_([a-z]+))?$/i);
-      if (!match) return null;
-      const balls = Number(match[1]);
-      const hands = match[2].toLowerCase();
-      const style = (match[3] ? match[3].toLowerCase() : MODE_DEFAULT_STYLE);
-      if (!isValidBalls(balls) || !isValidHands(hands) || !isValidStyle(style)) {
-        return null;
-      }
-      return { balls, hands, style };
     }
 
     function getBallsLabel(count) {
@@ -349,13 +339,8 @@
       }
     }
 
-    function getStyleLabel(value) {
-      const match = MODE_STYLE_OPTIONS.find((opt) => opt.value === value);
-      return match ? match.label : value;
-    }
-
-    function getOrCreateModeData(balls, hands, style) {
-      const key = buildModeKey(balls, hands, style);
+    function getOrCreateModeData(balls, hands) {
+      const key = buildModeKey(balls, hands);
       if (!allResultsByMode[key]) {
         allResultsByMode[key] = [];
       }
@@ -366,8 +351,7 @@
       if (!modeSummaryEl) return;
       const ballsText = getBallsLabel(selectedBalls);
       const handsText = getHandsLabel(selectedHands);
-      const styleText = getStyleLabel(selectedStyle);
-      modeSummaryEl.textContent = `Текущий режим: ${ballsText} · ${handsText} · ${styleText}`;
+      modeSummaryEl.textContent = `Текущий режим: ${ballsText} · ${handsText}`;
     }
 
     function applyModeToControls() {
@@ -377,22 +361,18 @@
       if (handsSelect) {
         handsSelect.value = selectedHands;
       }
-      if (styleSelect) {
-        styleSelect.value = selectedStyle;
-      }
     }
 
-    function switchMode(newBalls, newHands, newStyle) {
-      if (!isValidBalls(newBalls) || !isValidHands(newHands) || !isValidStyle(newStyle)) {
+    function switchMode(newBalls, newHands) {
+      if (!isValidBalls(newBalls) || !isValidHands(newHands)) {
         return;
       }
-      if (newBalls === selectedBalls && newHands === selectedHands && newStyle === selectedStyle) {
+      if (newBalls === selectedBalls && newHands === selectedHands) {
         return;
       }
       selectedBalls = newBalls;
       selectedHands = newHands;
-      selectedStyle = newStyle;
-      resultsData = getOrCreateModeData(selectedBalls, selectedHands, selectedStyle);
+      resultsData = getOrCreateModeData(selectedBalls, selectedHands);
       applyModeToControls();
       updateModeSummary();
       renderResults();
@@ -608,7 +588,7 @@
 
     function clearResults() {
       if (!Array.isArray(resultsData)) {
-        resultsData = getOrCreateModeData(selectedBalls, selectedHands, selectedStyle);
+        resultsData = getOrCreateModeData(selectedBalls, selectedHands);
       }
       resultsData.splice(0, resultsData.length);
       persistResults();
@@ -651,7 +631,6 @@
         minRecordSeconds,
         selectedBalls,
         selectedHands,
-        selectedStyle,
       };
       try {
         localStorage.setItem(SETTINGS_KEY, JSON.stringify(payload));
@@ -663,7 +642,6 @@
     function restoreSettingsFromStorage() {
       selectedBalls = MODE_DEFAULT_BALLS;
       selectedHands = MODE_DEFAULT_HANDS;
-      selectedStyle = MODE_DEFAULT_STYLE;
       if (typeof localStorage === 'undefined') {
         if (minRecordInput) minRecordInput.value = String(minRecordSeconds);
         return;
@@ -689,10 +667,6 @@
           if (isValidHands(candidateHands)) {
             selectedHands = candidateHands;
           }
-          const candidateStyle = typeof parsed.selectedStyle === 'string' ? parsed.selectedStyle : '';
-          if (isValidStyle(candidateStyle)) {
-            selectedStyle = candidateStyle;
-          }
         }
       } catch (err) {
         console.warn('Не удалось прочитать настройки из localStorage', err);
@@ -703,7 +677,7 @@
     function restoreResultsFromStorage() {
       allResultsByMode = {};
       if (typeof localStorage === 'undefined') {
-        resultsData = getOrCreateModeData(selectedBalls, selectedHands, selectedStyle);
+        resultsData = getOrCreateModeData(selectedBalls, selectedHands);
         renderResults();
         return;
       }
@@ -714,23 +688,14 @@
           const parsed = JSON.parse(raw);
           if (Array.isArray(parsed)) {
             const sanitized = sanitizeStoredArray(parsed);
-            const legacyKey = buildModeKey(MODE_DEFAULT_BALLS, MODE_DEFAULT_HANDS, MODE_DEFAULT_STYLE);
-            allResultsByMode[legacyKey] = sanitized;
+            allResultsByMode[buildModeKey(MODE_DEFAULT_BALLS, MODE_DEFAULT_HANDS)] = sanitized;
             shouldPersist = true;
           } else if (parsed && typeof parsed === 'object') {
             Object.keys(parsed).forEach((key) => {
               try {
-                const sanitized = sanitizeStoredArray(parsed[key]);
-                const parsedKey = parseModeKey(key);
-                const target = parsedKey
-                  ? buildModeKey(parsedKey.balls, parsedKey.hands, parsedKey.style)
-                  : buildModeKey(MODE_DEFAULT_BALLS, MODE_DEFAULT_HANDS, MODE_DEFAULT_STYLE);
-                allResultsByMode[target] = sanitized;
-                if (!parsedKey || target !== key) {
-                  shouldPersist = true;
-                }
+                allResultsByMode[key] = sanitizeStoredArray(parsed[key]);
               } catch (err) {
-                // ignore malformed entries
+                allResultsByMode[key] = [];
               }
             });
           }
@@ -739,7 +704,7 @@
         console.warn('Не удалось прочитать результаты из localStorage', err);
         allResultsByMode = {};
       }
-      resultsData = getOrCreateModeData(selectedBalls, selectedHands, selectedStyle);
+      resultsData = getOrCreateModeData(selectedBalls, selectedHands);
       renderResults();
       if (shouldPersist) {
         persistResults();
@@ -762,7 +727,7 @@
         });
         const link = document.createElement('a');
         const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const modeKey = buildModeKey(selectedBalls, selectedHands, selectedStyle);
+        const modeKey = buildModeKey(selectedBalls, selectedHands);
         link.download = `stopwatch-results-${modeKey}-${stamp}.png`;
         link.href = canvas.toDataURL('image/png');
         link.click();
@@ -845,7 +810,7 @@
       ballsSelect.addEventListener('change', () => {
         const val = Number(ballsSelect.value);
         if (Number.isFinite(val) && isValidBalls(val)) {
-          switchMode(val, selectedHands, selectedStyle);
+          switchMode(val, selectedHands);
         } else {
           applyModeToControls();
         }
@@ -856,18 +821,7 @@
       handsSelect.addEventListener('change', () => {
         const val = handsSelect.value;
         if (isValidHands(val)) {
-          switchMode(selectedBalls, val, selectedStyle);
-        } else {
-          applyModeToControls();
-        }
-      });
-    }
-
-    if (styleSelect) {
-      styleSelect.addEventListener('change', () => {
-        const val = styleSelect.value;
-        if (isValidStyle(val)) {
-          switchMode(selectedBalls, selectedHands, val);
+          switchMode(selectedBalls, val);
         } else {
           applyModeToControls();
         }
