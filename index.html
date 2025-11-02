@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -545,15 +544,14 @@
 
     function formatStamp(stamp) {
       try {
-        const stampDate = stamp ? new Date(stamp) : new Date();
-        if (Number.isNaN(stampDate.getTime())) return '';
-        const year = stampDate.getFullYear();
-        const month = pad(stampDate.getMonth() + 1);
-        const day = pad(stampDate.getDate());
-        const hours = pad(stampDate.getHours());
-        const minutes = pad(stampDate.getMinutes());
-        const seconds = pad(stampDate.getSeconds());
-        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+        const d = stamp ? new Date(stamp) : new Date();
+        if (Number.isNaN(d.getTime())) return '';
+        const year   = d.getFullYear();
+        const month  = pad(d.getMonth() + 1);
+        const day    = pad(d.getDate());
+        const hours  = pad(d.getHours());
+        const minute = pad(d.getMinutes());
+        return `${year}-${month}-${day} ${hours}:${minute}`;
       } catch (err) {
         return stamp || '';
       }
