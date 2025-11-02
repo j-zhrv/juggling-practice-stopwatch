@@ -134,6 +134,13 @@
     div#resultsCard {
         min-height: 600px;
     }
+    .table-caption {
+      caption-side: top;
+      text-align: left;
+      color: var(--muted);
+      padding: 6px 8px 4px;
+      font-size: 13px;
+    }
   </style>
 </head>
 <body>
@@ -191,7 +198,7 @@
           сек
         </label>
       </div>
-      <div id="cdOverlay" class="countdown-overlay" hidden><div class="countdown-digit" id="cdText">3</div></div>
+      <div id="cdOverlay" class="countdown-overlay" hidden><div class="countdown-digit" id="cdText"></div></div>
     </div>
 
     <datalist id="prestartMarks">
@@ -209,6 +216,7 @@
         </div>
       </div>
       <table>
+        <caption id="resultsModeSummary" class="table-caption"></caption>
         <thead>
           <tr>
             <th style="width:80px">№</th>
@@ -240,6 +248,7 @@
     const handsSelect = document.getElementById('handsMode');
     const styleSelect = document.getElementById('styleMode');
     const modeSummaryEl = document.getElementById('modeSummary');
+    const resultsModeSummaryEl = document.getElementById('resultsModeSummary');
     const downloadBtnDefaultText = btnDownload ? btnDownload.textContent : '';
 
     const STORAGE_KEY = 'jpsw_results_v1';
@@ -372,11 +381,14 @@
     }
 
     function updateModeSummary() {
-      if (!modeSummaryEl) return;
+      if (!modeSummaryEl && !resultsModeSummaryEl) return;
       const ballsText = getBallsLabel(selectedBalls);
       const handsText = getHandsLabel(selectedHands);
       const styleText = getStyleLabel(selectedStyle);
-      modeSummaryEl.textContent = `Текущий режим: ${ballsText} · ${handsText} · ${styleText}`;
+      const summary = `Текущий режим: ${ballsText} · ${handsText} · ${styleText}`;
+    
+      if (modeSummaryEl) modeSummaryEl.textContent = summary;            // верхняя панель
+      if (resultsModeSummaryEl) resultsModeSummaryEl.textContent = summary; // подпись таблицы
     }
 
     function applyModeToControls() {
