@@ -117,6 +117,14 @@
     .controls .countdown-min input { text-align: right; }
     .card { position: relative; }
 
+    .session-bar { display:flex; gap:14px; align-items:flex-start; justify-content:space-between; margin-top:8px; flex-wrap:wrap; padding: 12px 14px; border: 1px dashed var(--ring); border-radius: 12px; background: rgba(255,255,255,.02); }
+    .session-info { display:flex; flex-direction:column; gap:4px; min-width: 220px; }
+    .session-status { font-weight: 700; font-variant-numeric: tabular-nums lining-nums; letter-spacing:.3px; }
+    .session-remaining { font-size:13px; }
+    .session-controls { display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap; margin-left:auto; }
+    .session-controls label { display:flex; flex-direction:column; gap:6px; font-size:12px; color: var(--muted); }
+    .session-controls select { min-width: 140px; }
+
     .header-actions { display:flex; gap:12px; flex-wrap:wrap; align-items:center; justify-content:flex-end; }
     .mode-bar { display:flex; flex-wrap:wrap; gap:16px; align-items:flex-end; justify-content:space-between; margin-top:16px; }
     .mode-selectors { display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; }
@@ -197,6 +205,25 @@
           сек
         </label>
       </div>
+      <div class="session-bar" aria-live="polite" aria-atomic="true">
+        <div class="session-info">
+          <div class="muted" style="margin-bottom:4px">Сессия</div>
+          <div id="sessionStatus" class="session-status">Не начата</div>
+          <div id="sessionRemaining" class="session-remaining muted"></div>
+        </div>
+        <div class="session-controls">
+          <label>
+            <span>Длительность сессии</span>
+            <select id="sessionDuration">
+              <option value="10">10 минут</option>
+              <option value="15" selected>15 минут</option>
+              <option value="20">20 минут</option>
+              <option value="30">30 минут</option>
+            </select>
+          </label>
+          <button id="btnSessionReset" type="button">♻️ Новая сессия</button>
+        </div>
+      </div>
       <div id="cdOverlay" class="countdown-overlay" hidden><div class="countdown-digit" id="cdText"></div></div>
     </div>
 
@@ -272,6 +299,12 @@
     let selectedStyle = MODE_DEFAULT_STYLE;
     let allResultsByMode = {};
     let minRecordSeconds = 10;
+    const SESSION_DEFAULT_MINUTES = 15;
+    let sessionDurationMinutes = SESSION_DEFAULT_MINUTES;
+    let sessionStartTimestamp = null;
+    let sessionElapsedMs = 0;
+    let sessionRafId = null;
+    let sessionLimitNotified = false;
 
     // Pre-start countdown controls
     const prestartRange = document.getElementById('prestart');
@@ -284,6 +317,10 @@
     let cdStart = 0;
     let cdDurationMs = 0;
     const minRecordInput = document.getElementById('minRecord');
+    const sessionDurationSelect = document.getElementById('sessionDuration');
+    const sessionStatusEl = document.getElementById('sessionStatus');
+    const sessionRemainingEl = document.getElementById('sessionRemaining');
+    const btnSessionReset = document.getElementById('btnSessionReset');
 
     function clampPrestartValue(raw) {
       const numeric = Number(raw);
@@ -402,6 +439,13 @@
       }
     }
 
+    function applySessionControls() {
+      if (sessionDurationSelect) {
+        sessionDurationSelect.value = String(sessionDurationMinutes);
+      }
+      renderSession();
+    }
+
     function switchMode(newBalls, newHands, newStyle) {
       if (!isValidBalls(newBalls) || !isValidHands(newHands) || !isValidStyle(newStyle)) {
         return;
@@ -438,8 +482,92 @@
       return `${pad(minutes)}:${pad(seconds)}`;
     }
 
+    function formatTimeLong(ms) {
+      ms = Math.max(0, Math.floor(ms));
+      const totalSec = Math.floor(ms / 1000);
+      const hours = Math.floor(totalSec / 3600);
+      const minutes = Math.floor((totalSec % 3600) / 60);
+      const seconds = totalSec % 60;
+      if (hours > 0) return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+      return `${pad(minutes)}:${pad(seconds)}`;
+    }
+
     function render() {
       if (timeEl) timeEl.textContent = formatTime(elapsedMs);
+    }
+
+    function renderSession(forceExpired = false) {
+      if (!sessionStatusEl || !sessionRemainingEl) return;
+      const targetMs = Math.max(0, sessionDurationMinutes * 60 * 1000);
+      if (sessionStartTimestamp === null) {
+        sessionStatusEl.textContent = 'Не начата';
+        sessionRemainingEl.textContent = targetMs ? `Лимит: ${formatTimeLong(targetMs)}` : '';
+        return;
+      }
+      const elapsed = Math.min(targetMs, Math.max(0, sessionElapsedMs));
+      const remaining = Math.max(0, targetMs - elapsed);
+      sessionStatusEl.textContent = `Прошло ${formatTimeLong(elapsed)} из ${formatTimeLong(targetMs)}`;
+      if (forceExpired || remaining <= 0) {
+        sessionRemainingEl.textContent = 'Лимит достигнут — нажмите «Новая сессия»';
+      } else {
+        sessionRemainingEl.textContent = `Осталось ${formatTimeLong(remaining)}`;
+      }
+    }
+
+    function startSessionTicker() {
+      if (sessionRafId !== null) cancelAnimationFrame(sessionRafId);
+      sessionRafId = requestAnimationFrame(sessionTick);
+    }
+
+    function startSessionIfNeeded() {
+      if (sessionStartTimestamp !== null) return;
+      sessionStartTimestamp = performance.now();
+      sessionElapsedMs = 0;
+      sessionLimitNotified = false;
+      renderSession();
+      startSessionTicker();
+    }
+
+    function sessionTick(now) {
+      if (sessionStartTimestamp === null) return;
+      sessionElapsedMs = now - sessionStartTimestamp;
+      if (isSessionExpired()) {
+        handleSessionExpired();
+        return;
+      }
+      renderSession();
+      sessionRafId = requestAnimationFrame(sessionTick);
+    }
+
+    function isSessionExpired() {
+      if (sessionStartTimestamp === null) return false;
+      const targetMs = Math.max(0, sessionDurationMinutes * 60 * 1000);
+      return sessionElapsedMs >= targetMs && targetMs > 0;
+    }
+
+    function handleSessionExpired() {
+      if (sessionRafId !== null) cancelAnimationFrame(sessionRafId);
+      sessionRafId = null;
+      const targetMs = Math.max(0, sessionDurationMinutes * 60 * 1000);
+      sessionElapsedMs = targetMs;
+      renderSession(true);
+      if (running) pause();
+      if (!sessionLimitNotified) {
+        alert('Время сессии истекло. Нажмите «Новая сессия», чтобы продолжить.');
+        sessionLimitNotified = true;
+      }
+    }
+
+    function resetSession(restartIfRunning = false) {
+      if (sessionRafId !== null) cancelAnimationFrame(sessionRafId);
+      sessionRafId = null;
+      sessionStartTimestamp = null;
+      sessionElapsedMs = 0;
+      sessionLimitNotified = false;
+      renderSession();
+      if (restartIfRunning && running) {
+        startSessionIfNeeded();
+      }
     }
 
     function updatePrimaryButton() {
@@ -466,6 +594,11 @@
     }
 
     function start() {
+      if (isSessionExpired()) {
+        handleSessionExpired();
+        return;
+      }
+      startSessionIfNeeded();
       running = true;
       startTime = performance.now() - elapsedMs; // resume from paused value
       rafId = requestAnimationFrame(tick);
@@ -488,6 +621,10 @@
         return;
       }
       if (!running && elapsedMs === 0) {
+        if (isSessionExpired()) {
+          handleSessionExpired();
+          return;
+        }
         const secs = prestartRange ? clampPrestartValue(prestartRange.value) : 0;
         if (secs && secs > 0) {
           beginCountdown(secs);
@@ -669,6 +806,7 @@
         selectedBalls,
         selectedHands,
         selectedStyle,
+        sessionDurationMinutes,
       };
       try {
         localStorage.setItem(SETTINGS_KEY, JSON.stringify(payload));
@@ -696,6 +834,10 @@
         if (Number.isFinite(candidate) && candidate >= 0) {
           const clamped = Math.min(3600, candidate);
           minRecordSeconds = Math.round(clamped);
+        }
+        const storedDuration = parsed && typeof parsed === 'object' ? Number(parsed.sessionDurationMinutes) : NaN;
+        if (Number.isFinite(storedDuration) && storedDuration > 0) {
+          sessionDurationMinutes = Math.min(999, Math.max(1, Math.round(storedDuration)));
         }
         if (parsed && typeof parsed === 'object') {
           const candidateBalls = Number(parsed.selectedBalls);
@@ -847,6 +989,7 @@
 
     restoreSettingsFromStorage();
     applyModeToControls();
+    applySessionControls();
     restoreResultsFromStorage();
     updateModeSummary();
 
@@ -901,9 +1044,32 @@
       });
     }
 
+    if (sessionDurationSelect) {
+      sessionDurationSelect.addEventListener('change', () => {
+        const minutes = Number(sessionDurationSelect.value);
+        if (!Number.isFinite(minutes) || minutes <= 0) {
+          applySessionControls();
+          return;
+        }
+        sessionDurationMinutes = Math.min(999, Math.max(1, Math.round(minutes)));
+        persistSettings();
+        renderSession();
+        if (sessionStartTimestamp !== null && isSessionExpired()) {
+          handleSessionExpired();
+        }
+      });
+    }
+
+    if (btnSessionReset) {
+      btnSessionReset.addEventListener('click', () => {
+        resetSession(true);
+      });
+    }
+
     // Initial render
     render();
     updatePrimaryButton();
+    renderSession();
   </script>
 </body>
 </html>
