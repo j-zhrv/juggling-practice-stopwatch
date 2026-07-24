@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Секундомер — пробел: старт → стоп → запись</title>
+  <title>Секундомер — пробел: старт → запись → следующая попытка</title>
   <style>
     :root {
       --bg: #0f1220;
@@ -126,17 +126,32 @@
     .session-controls select { min-width: 140px; }
 
     .header-actions { display:flex; gap:12px; flex-wrap:wrap; align-items:center; justify-content:flex-end; }
-    .mode-bar { display:flex; flex-wrap:wrap; gap:16px; align-items:flex-end; justify-content:space-between; margin-top:16px; }
-    .mode-selectors { display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; }
-    .mode-selectors label { display:flex; flex-direction:column; gap:6px; font-size:12px; color: var(--muted); }
-    .mode-selectors select { min-width:140px; }
-    .mode-summary { font-size:13px; color: var(--muted); margin-left:auto; align-self:center; flex:1 1 220px; text-align:right; }
-    @media (max-width: 640px) {
-      .mode-bar { flex-direction:column; align-items:stretch; }
-      .mode-summary { margin-left:0; text-align:left; }
+    .mode-bar { display:grid; gap:12px; margin-top:16px; }
+    .mode-selectors { display:grid; gap:10px; }
+    .mode-group {
+      display:grid;
+      grid-template-columns:minmax(150px, .7fr) minmax(0, 2fr);
+      gap:12px;
+      align-items:center;
     }
-    button#btnReset {
-        display: none;
+    .mode-group-label { color:var(--muted); font-size:13px; }
+    .mode-options {
+      display:grid;
+      grid-template-columns:repeat(var(--option-count), minmax(0, 1fr));
+      gap:8px;
+    }
+    .mode-option { width:100%; padding:10px 12px; }
+    .mode-option[aria-pressed="true"] {
+      background:var(--accent);
+      border-color:var(--accent);
+      color:#0f1220;
+      font-weight:700;
+    }
+    .mode-option:focus-visible { outline:2px solid #fff; outline-offset:2px; }
+    .mode-summary { font-size:13px; color:var(--muted); text-align:left; }
+    @media (max-width: 640px) {
+      .mode-group { grid-template-columns:1fr; gap:6px; }
+      .mode-options { grid-template-columns:repeat(auto-fit, minmax(110px, 1fr)); }
     }
     div#resultsCard {
         min-height: 600px;
@@ -156,43 +171,42 @@
       <div class="display">
         <div id="time" class="time" aria-live="polite" aria-atomic="true">00:00</div>
         <div class="badges">
-          <div class="badge">Пробел — старт</div>
-          <div class="badge">Пробел (в паузе) — запись и сброс</div>
+          <div class="badge">Пробел — старт / завершить попытку</div>
+          <div class="badge">После падения — одно нажатие</div>
         </div>
       </div>
       <div class="mode-bar">
-        <div class="mode-selectors">
-          <label>
-            <span>Количество мячей</span>
-            <select id="ballsMode">
-              <option value="2">2 мяча</option>
-              <option value="3">3 мяча</option>
-              <option value="4">4 мяча</option>
-            </select>
-          </label>
-          <label>
-            <span>Режим рук</span>
-            <select id="handsMode">
-              <option value="left">Только левой</option>
-              <option value="right">Только правой</option>
-              <option value="both">Двумя руками</option>
-            </select>
-          </label>
-          <label>
-            <span>Тип жонглирования</span>
-            <select id="styleMode">
-              <option value="clockwise">по часовой стрелке</option>
-              <option value="counterclockwise">против часовой стрелки</option>
-              <option value="mixed">mixed</option>
-              <option value="synchronous">синхронно</option>
-            </select>
-          </label>
+        <div id="modeSelectors" class="mode-selectors">
+          <div class="mode-group" role="group" aria-labelledby="ballsModeLabel">
+            <div id="ballsModeLabel" class="mode-group-label">Количество мячей</div>
+            <div class="mode-options" style="--option-count: 3">
+              <button type="button" class="mode-option" data-mode="balls" data-value="2" aria-pressed="false">2 мяча</button>
+              <button type="button" class="mode-option" data-mode="balls" data-value="3" aria-pressed="false">3 мяча</button>
+              <button type="button" class="mode-option" data-mode="balls" data-value="4" aria-pressed="false">4 мяча</button>
+            </div>
+          </div>
+          <div class="mode-group" role="group" aria-labelledby="handsModeLabel">
+            <div id="handsModeLabel" class="mode-group-label">Режим рук</div>
+            <div class="mode-options" style="--option-count: 3">
+              <button type="button" class="mode-option" data-mode="hands" data-value="left" aria-pressed="false">Только левая</button>
+              <button type="button" class="mode-option" data-mode="hands" data-value="right" aria-pressed="false">Только правая</button>
+              <button type="button" class="mode-option" data-mode="hands" data-value="both" aria-pressed="false">Две руки</button>
+            </div>
+          </div>
+          <div class="mode-group" role="group" aria-labelledby="styleModeLabel">
+            <div id="styleModeLabel" class="mode-group-label">Тип жонглирования</div>
+            <div class="mode-options" style="--option-count: 4">
+              <button type="button" class="mode-option" data-mode="style" data-value="clockwise" aria-pressed="false">По часовой</button>
+              <button type="button" class="mode-option" data-mode="style" data-value="counterclockwise" aria-pressed="false">Против часовой</button>
+              <button type="button" class="mode-option" data-mode="style" data-value="mixed" aria-pressed="false">Mixed</button>
+              <button type="button" class="mode-option" data-mode="style" data-value="synchronous" aria-pressed="false">Синхронно</button>
+            </div>
+          </div>
         </div>
         <div id="modeSummary" class="mode-summary"></div>
       </div>
       <div class="controls" style="margin-top: 14px">
         <button id="btnToggle" class="primary" title="Пробел">▶️ Старт</button>
-        <button id="btnReset" title="Пробел после паузы">⟲ Записать и сбросить</button>
         <button id="btnClear">🧹 Очистить таблицу</button>
         <label class="countdown countdown-prestart" title="Отсчёт запуска (3, 5, 10 или 15 сек)">
           Отсчёт перед стартом:
@@ -266,13 +280,11 @@
     const timeEl = document.getElementById('time');
     const resultsEl = document.getElementById('results');
     const btnToggle = document.getElementById('btnToggle');
-    const btnReset = document.getElementById('btnReset');
     const btnClear = document.getElementById('btnClear');
     const btnDownload = document.getElementById('btnDownload');
     const resultsCard = document.getElementById('resultsCard');
-    const ballsSelect = document.getElementById('ballsMode');
-    const handsSelect = document.getElementById('handsMode');
-    const styleSelect = document.getElementById('styleMode');
+    const modeSelectorsEl = document.getElementById('modeSelectors');
+    const modeButtons = Array.from(document.querySelectorAll('.mode-option'));
     const modeSummaryEl = document.getElementById('modeSummary');
     const resultsModeSummaryEl = document.getElementById('resultsModeSummary');
     const downloadBtnDefaultText = btnDownload ? btnDownload.textContent : '';
@@ -428,15 +440,14 @@
     }
 
     function applyModeToControls() {
-      if (ballsSelect) {
-        ballsSelect.value = String(selectedBalls);
-      }
-      if (handsSelect) {
-        handsSelect.value = selectedHands;
-      }
-      if (styleSelect) {
-        styleSelect.value = selectedStyle;
-      }
+      modeButtons.forEach((button) => {
+        const dimension = button.dataset.mode;
+        let currentValue = '';
+        if (dimension === 'balls') currentValue = String(selectedBalls);
+        if (dimension === 'hands') currentValue = selectedHands;
+        if (dimension === 'style') currentValue = selectedStyle;
+        button.setAttribute('aria-pressed', String(button.dataset.value === currentValue));
+      });
     }
 
     function applySessionControls() {
@@ -573,9 +584,14 @@
     function updatePrimaryButton() {
       if (!btnToggle) return;
       btnToggle.classList.remove('primary');
-      if (running) {
-        btnToggle.textContent = '⏸ Пауза';
-        btnToggle.title = 'Пробел';
+      if (isCountingDown) {
+        btnToggle.textContent = '⏭ Начать сейчас';
+        btnToggle.classList.add('primary');
+        btnToggle.title = 'Пробел (пропустить отсчёт)';
+      } else if (running) {
+        btnToggle.textContent = '⏹ Завершить и повторить';
+        btnToggle.classList.add('primary');
+        btnToggle.title = 'Пробел (записать результат и начать следующую попытку)';
       } else if (elapsedMs > 0) {
         btnToggle.textContent = '💾 Записать и сбросить';
         btnToggle.classList.add('primary');
@@ -613,39 +629,58 @@
       updatePrimaryButton();
     }
 
+    function beginAttempt() {
+      if (isSessionExpired()) {
+        handleSessionExpired();
+        return;
+      }
+      const secs = prestartRange ? clampPrestartValue(prestartRange.value) : 0;
+      if (secs > 0) {
+        beginCountdown(secs);
+      } else {
+        start();
+      }
+    }
+
     function handlePrimaryAction() {
       if (isCountingDown) {
-        // Space during countdown: skip countdown and start immediately
+        // Space during countdown: skip countdown and start immediately.
         cancelCountdown();
         start();
         return;
       }
-      if (!running && elapsedMs === 0) {
-        if (isSessionExpired()) {
-          handleSessionExpired();
-          return;
-        }
-        const secs = prestartRange ? clampPrestartValue(prestartRange.value) : 0;
-        if (secs && secs > 0) {
-          beginCountdown(secs);
-        } else {
-          start();
-        }
-        return;
-      }
       if (running) {
-        pause();
+        finishAndRestart();
         return;
       }
-      resetAndLog();
+      if (elapsedMs > 0) {
+        // A stopped value can remain only after an interrupted or expired session.
+        resetAndLog();
+        return;
+      }
+      beginAttempt();
     }
 
     function resetAndLog() {
       cancelCountdown();
-      // Log current elapsed (even if 0), then reset to zero and pause
-      addResultEntry(elapsedMs);
+      if (running) {
+        elapsedMs = performance.now() - startTime;
+        pause();
+      }
+      const completedMs = elapsedMs;
+      addResultEntry(completedMs);
       elapsedMs = 0;
-      pause();
+      render();
+      updatePrimaryButton();
+    }
+
+    function finishAndRestart() {
+      resetAndLog();
+      if (isSessionExpired()) {
+        handleSessionExpired();
+        return;
+      }
+      beginAttempt();
     }
 
     function persistResults() {
@@ -939,6 +974,7 @@
       cdStart = performance.now();
       cdOverlay.hidden = false;
       updateCountdownText(cdDurationMs);
+      updatePrimaryButton();
       cdRafId = requestAnimationFrame(countdownTick);
     }
     function countdownTick(now) {
@@ -966,6 +1002,7 @@
       cdRafId = null;
       if (cdOverlay) { cdOverlay.hidden = true; }
       if (cdText) { cdText.textContent = ''; }
+      updatePrimaryButton();
     }
 
     // --- Keyboard controls ---
@@ -995,40 +1032,24 @@
 
     // --- Buttons as mouse fallback ---
     if (btnToggle) btnToggle.addEventListener('click', handlePrimaryAction);
-    if (btnReset) btnReset.addEventListener('click', resetAndLog);
     if (btnClear) btnClear.addEventListener('click', clearResults);
     if (btnDownload) btnDownload.addEventListener('click', downloadTableScreenshot);
 
-    if (ballsSelect) {
-      ballsSelect.addEventListener('change', () => {
-        const val = Number(ballsSelect.value);
-        if (Number.isFinite(val) && isValidBalls(val)) {
-          switchMode(val, selectedHands, selectedStyle);
-        } else {
-          applyModeToControls();
+    if (modeSelectorsEl) {
+      modeSelectorsEl.addEventListener('click', (event) => {
+        const button = event.target.closest('.mode-option');
+        if (!button || !modeSelectorsEl.contains(button)) return;
+        const dimension = button.dataset.mode;
+        const value = button.dataset.value || '';
+        if (dimension === 'balls') {
+          const balls = Number(value);
+          if (isValidBalls(balls)) switchMode(balls, selectedHands, selectedStyle);
+        } else if (dimension === 'hands' && isValidHands(value)) {
+          switchMode(selectedBalls, value, selectedStyle);
+        } else if (dimension === 'style' && isValidStyle(value)) {
+          switchMode(selectedBalls, selectedHands, value);
         }
-      });
-    }
-
-    if (handsSelect) {
-      handsSelect.addEventListener('change', () => {
-        const val = handsSelect.value;
-        if (isValidHands(val)) {
-          switchMode(selectedBalls, val, selectedStyle);
-        } else {
-          applyModeToControls();
-        }
-      });
-    }
-
-    if (styleSelect) {
-      styleSelect.addEventListener('change', () => {
-        const val = styleSelect.value;
-        if (isValidStyle(val)) {
-          switchMode(selectedBalls, selectedHands, val);
-        } else {
-          applyModeToControls();
-        }
+        if (event.detail > 0) button.blur();
       });
     }
 
