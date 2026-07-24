@@ -1007,7 +1007,7 @@
       const previousBestMs = modeData.length > 0
         ? modeData.reduce((best, item) => Math.max(best, item.ms), 0)
         : null;
-      const isNewRecord = previousBestMs !== null && entry.ms > previousBestMs;
+      const isNewRecord = previousBestMs === null || entry.ms > previousBestMs;
       modeData.unshift(entry);
       persistResults();
       renderResults();
@@ -1378,8 +1378,12 @@
       if (victoryTitleEl) victoryTitleEl.textContent = variant.title;
       if (victoryMessageEl) victoryMessageEl.textContent = variant.message;
       if (victoryResultEl) {
-        const improvement = formatRecordImprovement(ms - previousBestMs);
-        victoryResultEl.textContent = formatTime(ms) + ' · лучше на ' + improvement + ' сек';
+        if (previousBestMs === null) {
+          victoryResultEl.textContent = formatTime(ms) + ' · первый рекорд режима';
+        } else {
+          const improvement = formatRecordImprovement(ms - previousBestMs);
+          victoryResultEl.textContent = formatTime(ms) + ' · лучше на ' + improvement + ' сек';
+        }
       }
       if (victoryModeEl) {
         victoryModeEl.textContent = getBallsLabel(selectedBalls) + ' · ' + getHandsLabel(selectedHands) + ' · ' + getStyleLabel(selectedStyle);
