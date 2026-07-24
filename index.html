@@ -169,34 +169,82 @@
     }
 
     .victory-popup {
+      --victory-accent:#ffd76a;
+      --victory-accent-2:#ff9d5c;
       position:fixed;
       inset:0;
       z-index:1000;
       display:grid;
       place-items:center;
-      overflow:hidden;
-      pointer-events:none;
-      background:radial-gradient(circle at center, rgba(62,82,170,.38), rgba(15,18,32,.12) 55%, transparent 75%);
+      overflow:auto;
+      padding:20px;
+      pointer-events:auto;
+      background:
+        radial-gradient(circle at 50% 38%, color-mix(in srgb, var(--victory-accent) 24%, transparent), transparent 48%),
+        rgba(8,10,20,.82);
+      backdrop-filter:blur(10px);
     }
     .victory-popup[hidden] { display:none; }
-    .victory-popup.show { animation:victoryBackdrop 3.8s ease both; }
+    .victory-popup.show { animation:victoryBackdropIn .35s ease-out both; }
     .victory-card {
       position:relative;
       z-index:2;
-      width:min(520px, calc(100% - 40px));
-      padding:30px 26px;
+      width:min(560px, 100%);
+      padding:28px 28px 24px;
       text-align:center;
-      border:1px solid rgba(255,215,106,.75);
-      border-radius:24px;
-      background:linear-gradient(160deg, rgba(35,42,80,.98), rgba(20,23,42,.98));
-      box-shadow:0 24px 80px rgba(0,0,0,.55), 0 0 60px rgba(255,205,74,.18);
-      animation:victoryCard 3.8s cubic-bezier(.2,.8,.2,1) both;
+      border:1px solid color-mix(in srgb, var(--victory-accent) 76%, white);
+      border-radius:26px;
+      background:
+        linear-gradient(145deg, color-mix(in srgb, var(--victory-accent) 10%, #252b4d), #12162b 64%);
+      box-shadow:
+        0 28px 90px rgba(0,0,0,.62),
+        0 0 70px color-mix(in srgb, var(--victory-accent) 22%, transparent);
+      animation:victoryCardIn .72s cubic-bezier(.16,1,.3,1) both;
     }
-    .victory-trophy { font-size:64px; line-height:1; animation:trophyBounce .75s ease-out both; }
-    .victory-title { margin-top:12px; color:#ffd76a; font-size:clamp(30px, 7vw, 52px); font-weight:900; letter-spacing:.02em; }
-    .victory-result { margin-top:10px; font-size:clamp(18px, 4vw, 26px); font-weight:700; }
+    .victory-badge {
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-height:30px;
+      padding:6px 12px;
+      border:1px solid color-mix(in srgb, var(--victory-accent) 70%, transparent);
+      border-radius:999px;
+      color:var(--victory-accent);
+      background:color-mix(in srgb, var(--victory-accent) 10%, transparent);
+      font-size:12px;
+      font-weight:900;
+      letter-spacing:.12em;
+      text-transform:uppercase;
+    }
+    .victory-illustration {
+      height:126px;
+      margin:14px auto 2px;
+      color:var(--victory-accent);
+      filter:drop-shadow(0 12px 22px color-mix(in srgb, var(--victory-accent) 28%, transparent));
+      animation:illustrationFloat 2.2s ease-in-out infinite;
+    }
+    .victory-illustration svg { display:block; width:100%; height:100%; }
+    .victory-title {
+      margin-top:6px;
+      color:var(--victory-accent);
+      font-size:clamp(30px, 7vw, 50px);
+      font-weight:950;
+      line-height:1.02;
+      letter-spacing:.01em;
+    }
+    .victory-message { margin:12px auto 0; max-width:430px; color:var(--text); font-size:17px; line-height:1.4; }
+    .victory-result { margin-top:12px; font-size:clamp(19px, 4vw, 27px); font-weight:800; }
     .victory-mode { margin-top:8px; color:var(--muted); font-size:14px; }
-    .victory-confetti { position:absolute; inset:0; z-index:1; }
+    .victory-actions { display:grid; grid-template-columns:1.35fr 1fr; gap:10px; margin-top:22px; }
+    .victory-actions button { min-height:48px; }
+    .victory-actions .primary {
+      color:#101426;
+      border-color:var(--victory-accent);
+      background:linear-gradient(135deg, var(--victory-accent), var(--victory-accent-2));
+      font-weight:800;
+    }
+    .victory-hint { margin-top:12px; color:var(--muted); font-size:12px; }
+    .victory-confetti { position:fixed; inset:0; z-index:1; pointer-events:none; overflow:hidden; }
     .confetti-piece {
       position:absolute;
       top:-12vh;
@@ -205,25 +253,28 @@
       border-radius:2px;
       animation:confettiFall var(--duration) linear var(--delay) both;
     }
-    @keyframes victoryBackdrop {
-      0% { opacity:0; }
-      12%, 76% { opacity:1; }
-      100% { opacity:0; }
+    @keyframes victoryBackdropIn {
+      from { opacity:0; }
+      to { opacity:1; }
     }
-    @keyframes victoryCard {
-      0% { opacity:0; transform:scale(.55) translateY(30px); }
-      16% { opacity:1; transform:scale(1.06) translateY(0); }
-      25%, 78% { opacity:1; transform:scale(1); }
-      100% { opacity:0; transform:scale(.94) translateY(-18px); }
+    @keyframes victoryCardIn {
+      0% { opacity:0; transform:scale(.62) translateY(36px) rotate(-2deg); }
+      62% { opacity:1; transform:scale(1.04) translateY(0) rotate(.6deg); }
+      100% { opacity:1; transform:scale(1) translateY(0) rotate(0); }
     }
-    @keyframes trophyBounce {
-      0% { transform:scale(.3) rotate(-18deg); }
-      60% { transform:scale(1.2) rotate(8deg); }
-      100% { transform:scale(1) rotate(0); }
+    @keyframes illustrationFloat {
+      0%, 100% { transform:translateY(0) rotate(-1deg); }
+      50% { transform:translateY(-8px) rotate(1deg); }
     }
     @keyframes confettiFall {
       from { transform:translate3d(0, -12vh, 0) rotate(0deg); }
       to { transform:translate3d(var(--drift), 118vh, 0) rotate(900deg); }
+    }
+    @media (max-width:560px) {
+      .victory-popup { padding:12px; }
+      .victory-card { padding:22px 18px 18px; }
+      .victory-illustration { height:104px; }
+      .victory-actions { grid-template-columns:1fr; }
     }
   </style>
 </head>
@@ -339,13 +390,20 @@
     </div>
   </div>
 
-  <div id="recordCelebration" class="victory-popup" role="status" aria-live="assertive" aria-atomic="true" hidden>
+  <div id="recordCelebration" class="victory-popup" role="dialog" aria-modal="true" aria-labelledby="victoryTitle" aria-describedby="victoryMessage" hidden>
     <div id="victoryConfetti" class="victory-confetti" aria-hidden="true"></div>
     <div class="victory-card">
-      <div class="victory-trophy" aria-hidden="true">🏆</div>
-      <div class="victory-title">Новый рекорд!</div>
+      <div id="victoryBadge" class="victory-badge"></div>
+      <div id="victoryIllustration" class="victory-illustration" aria-hidden="true"></div>
+      <div id="victoryTitle" class="victory-title"></div>
+      <div id="victoryMessage" class="victory-message"></div>
       <div id="victoryResult" class="victory-result"></div>
       <div id="victoryMode" class="victory-mode"></div>
+      <div class="victory-actions">
+        <button id="btnVictoryContinue" type="button" class="primary">▶ Продолжить тренировку</button>
+        <button id="btnVictoryFinish" type="button">⏹ Закончить на рекорде</button>
+      </div>
+      <div class="victory-hint">Попытки и время сессии поставлены на паузу</div>
     </div>
   </div>
 
@@ -370,9 +428,15 @@
     const downloadBtnDefaultText = btnDownload ? btnDownload.textContent : '';
     const recordCelebrationEl = document.getElementById('recordCelebration');
     const victoryConfettiEl = document.getElementById('victoryConfetti');
+    const victoryBadgeEl = document.getElementById('victoryBadge');
+    const victoryIllustrationEl = document.getElementById('victoryIllustration');
+    const victoryTitleEl = document.getElementById('victoryTitle');
+    const victoryMessageEl = document.getElementById('victoryMessage');
     const victoryResultEl = document.getElementById('victoryResult');
     const victoryModeEl = document.getElementById('victoryMode');
-    let celebrationTimeoutId = null;
+    const btnVictoryContinue = document.getElementById('btnVictoryContinue');
+    const btnVictoryFinish = document.getElementById('btnVictoryFinish');
+    let victoryVariantIndex = Math.floor(Math.random() * 6);
 
     const STORAGE_KEY = 'jpsw_results_v1';
     const SETTINGS_KEY = 'jpsw_settings_v1';
@@ -402,6 +466,9 @@
     let sessionElapsedMs = 0;
     let sessionRafId = null;
     let sessionLimitNotified = false;
+    let isCelebrationPaused = false;
+    let celebrationPauseStartedAt = null;
+    let celebrationSessionWasActive = false;
 
     // Pre-start countdown controls
     const prestartRange = document.getElementById('prestart');
@@ -627,7 +694,7 @@
     }
 
     function sessionTick(now) {
-      if (sessionStartTimestamp === null) return;
+      if (sessionStartTimestamp === null || isCelebrationPaused) return;
       sessionElapsedMs = now - sessionStartTimestamp;
       if (isSessionExpired()) {
         handleSessionExpired();
@@ -701,6 +768,7 @@
     }
 
     function start() {
+      if (isCelebrationPaused) return;
       if (isSessionExpired()) {
         handleSessionExpired();
         return;
@@ -744,6 +812,7 @@
     }
 
     function handlePrimaryAction() {
+      if (isCelebrationPaused) return;
       if (isCountingDown) {
         // Space during countdown: skip countdown and start immediately.
         cancelCountdown();
@@ -769,14 +838,16 @@
         pause();
       }
       const completedMs = elapsedMs;
-      addResultEntry(completedMs);
+      const didCelebrate = addResultEntry(completedMs);
       elapsedMs = 0;
       render();
       updatePrimaryButton();
+      return didCelebrate;
     }
 
     function finishAndRestart() {
-      resetAndLog();
+      const didCelebrate = resetAndLog();
+      if (didCelebrate) return;
       if (isSessionExpired()) {
         handleSessionExpired();
         return;
@@ -926,7 +997,7 @@
       if (ms < minMs) {
         window.scrollTo(0, 0);
         renderResults();
-        return;
+        return false;
       }
       const entry = {
         ms: Math.max(0, Math.floor(ms)),
@@ -944,6 +1015,7 @@
       if (isNewRecord) {
         showRecordCelebration(entry.ms, previousBestMs);
       }
+      return isNewRecord;
     }
 
     function removeResult(modeKey, index) {
@@ -1123,25 +1195,95 @@
       }
     }
 
+    const VICTORY_VARIANTS = [
+      {
+        badge: 'Пробит новый потолок',
+        title: 'Новая вершина!',
+        message: 'Ты только что поднял планку этого режима. Остановись на мгновение и почувствуй результат.',
+        illustration: 'mountain',
+        accent: '#ffd76a',
+        accent2: '#ff9d5c',
+      },
+      {
+        badge: 'Level up',
+        title: 'Уровень повышен!',
+        message: 'Навык стал измеримо сильнее. Это не ощущение — новый результат уже в таблице.',
+        illustration: 'level',
+        accent: '#7aa2ff',
+        accent2: '#72e6e1',
+      },
+      {
+        badge: 'Режим разогрет',
+        title: 'Ты в огне!',
+        message: 'Ритм, внимание и движение сошлись в одной попытке. Запомни это состояние.',
+        illustration: 'flame',
+        accent: '#ff7a8a',
+        accent2: '#ffb45c',
+      },
+      {
+        badge: 'Траектория роста',
+        title: 'Новая орбита!',
+        message: 'Ты вышел за прежнюю границу. Следующая серия начинается уже с другой высоты.',
+        illustration: 'rocket',
+        accent: '#b58cff',
+        accent2: '#6fd6ff',
+      },
+      {
+        badge: 'Корона режима',
+        title: 'Рекорд принадлежит тебе!',
+        message: 'В этой комбинации появился новый ориентир. Именно его предстоит превзойти дальше.',
+        illustration: 'crown',
+        accent: '#72e6b1',
+        accent2: '#ffe178',
+      },
+      {
+        badge: 'Прорыв',
+        title: 'Граница сдвинута!',
+        message: 'Ещё одна попытка превратилась в доказательство роста. Разреши себе этому порадоваться.',
+        illustration: 'lightning',
+        accent: '#ffe66f',
+        accent2: '#7aa2ff',
+      },
+    ];
+
+    function getVictoryIllustration(type) {
+      switch (type) {
+        case 'mountain':
+          return '<svg viewBox="0 0 180 126" xmlns="http://www.w3.org/2000/svg"><path d="M18 108 66 42l18 24 22-38 56 80H18Z" fill="currentColor" opacity=".24"/><path d="m18 108 48-66 18 24 22-38 56 80" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/><path d="M106 28v-18m0 2h34l-9 11 9 11h-34" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="66" cy="42" r="7" fill="currentColor"/></svg>';
+        case 'level':
+          return '<svg viewBox="0 0 180 126" xmlns="http://www.w3.org/2000/svg"><path d="M38 100h104" stroke="currentColor" stroke-width="8" stroke-linecap="round" opacity=".3"/><path d="M55 92V61m0 0L38 78m17-17 17 17M90 92V42m0 0L71 61m19-19 19 19m16 31V24m0 0-20 21m20-21 20 21" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="125" cy="24" r="9" fill="currentColor"/></svg>';
+        case 'flame':
+          return '<svg viewBox="0 0 180 126" xmlns="http://www.w3.org/2000/svg"><path d="M92 112c-30 0-49-18-47-45 2-20 16-32 33-50-2 18 9 22 14 35 8-16 23-22 19-42 25 21 33 42 25 65-7 23-22 37-44 37Z" fill="currentColor" opacity=".25"/><path d="M91 111c-21 0-34-13-33-31 1-14 10-22 22-35-1 13 7 16 11 25 6-11 16-15 14-29 17 15 22 29 17 46-5 15-15 24-31 24Z" fill="currentColor"/><path d="M91 104c-9 0-15-6-14-14 1-6 5-10 10-16 0 6 3 8 5 12 3-5 7-7 6-13 8 7 10 13 8 21-2 6-7 10-15 10Z" fill="#fff" opacity=".82"/></svg>';
+        case 'rocket':
+          return '<svg viewBox="0 0 180 126" xmlns="http://www.w3.org/2000/svg"><path d="M70 84c-12 6-22 17-27 31 15-3 28-10 35-21" fill="currentColor" opacity=".35"/><path d="M104 80c8 4 17 12 22 23 4-13 3-26-2-35M67 47c-10 3-21 10-29 21 12 2 25 0 35-5" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><path d="M69 72c5-30 27-54 64-62-2 36-20 61-50 73L69 72Z" fill="currentColor" opacity=".28"/><path d="M69 72c5-30 27-54 64-62-2 36-20 61-50 73L69 72Z" fill="none" stroke="currentColor" stroke-width="8" stroke-linejoin="round"/><circle cx="110" cy="36" r="10" fill="#fff" opacity=".86"/></svg>';
+        case 'crown':
+          return '<svg viewBox="0 0 180 126" xmlns="http://www.w3.org/2000/svg"><path d="m31 40 32 26 27-45 27 45 32-26-13 67H44L31 40Z" fill="currentColor" opacity=".28"/><path d="m31 40 32 26 27-45 27 45 32-26-13 67H44L31 40Z" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/><path d="M47 87h86" stroke="currentColor" stroke-width="8" stroke-linecap="round"/><circle cx="31" cy="40" r="8" fill="currentColor"/><circle cx="90" cy="21" r="8" fill="currentColor"/><circle cx="149" cy="40" r="8" fill="currentColor"/></svg>';
+        default:
+          return '<svg viewBox="0 0 180 126" xmlns="http://www.w3.org/2000/svg"><circle cx="90" cy="63" r="52" fill="currentColor" opacity=".16"/><path d="m98 8-48 63h34l-8 47 54-70H96L98 8Z" fill="currentColor"/><path d="M33 24 21 12m126 12 12-12M26 104l-14 10m142-10 14 10" stroke="currentColor" stroke-width="7" stroke-linecap="round"/></svg>';
+      }
+    }
+
     function formatRecordImprovement(ms) {
       const seconds = Math.max(0, ms) / 1000;
       const precision = seconds < 10 ? 1 : 0;
       return seconds.toFixed(precision).replace('.', ',');
     }
 
-    function createVictoryConfetti() {
+    function createVictoryConfetti(variant) {
       if (!victoryConfettiEl) return;
       victoryConfettiEl.innerHTML = '';
-      const colors = ['#ffd76a', '#7aa2ff', '#ff7aa8', '#72e6b1', '#ffffff'];
+      const colors = [variant.accent, variant.accent2, '#ff7aa8', '#72e6b1', '#ffffff'];
       const fragment = document.createDocumentFragment();
-      for (let i = 0; i < 36; i += 1) {
+      for (let i = 0; i < 40; i += 1) {
         const piece = document.createElement('span');
         piece.className = 'confetti-piece';
         piece.style.left = String(Math.random() * 100) + '%';
         piece.style.background = colors[i % colors.length];
-        piece.style.setProperty('--delay', String(Math.random() * .55) + 's');
-        piece.style.setProperty('--duration', String(2.2 + Math.random() * 1.25) + 's');
-        piece.style.setProperty('--drift', String(-90 + Math.random() * 180) + 'px');
+        piece.style.setProperty('--delay', String(Math.random() * .65) + 's');
+        piece.style.setProperty('--duration', String(2.3 + Math.random() * 1.45) + 's');
+        piece.style.setProperty('--drift', String(-100 + Math.random() * 200) + 'px');
+        piece.style.width = String(7 + Math.random() * 7) + 'px';
+        piece.style.height = String(10 + Math.random() * 13) + 'px';
         fragment.appendChild(piece);
       }
       victoryConfettiEl.appendChild(fragment);
@@ -1195,8 +1337,46 @@
       }
     }
 
+    function pauseSessionForCelebration() {
+      const now = performance.now();
+      isCelebrationPaused = true;
+      celebrationPauseStartedAt = now;
+      celebrationSessionWasActive = sessionStartTimestamp !== null && !isSessionExpired();
+      if (sessionRafId !== null) cancelAnimationFrame(sessionRafId);
+      sessionRafId = null;
+      if (celebrationSessionWasActive) {
+        sessionElapsedMs = now - sessionStartTimestamp;
+        renderSession();
+      }
+    }
+
+    function resumeSessionAfterCelebration() {
+      const now = performance.now();
+      if (celebrationSessionWasActive && sessionStartTimestamp !== null && celebrationPauseStartedAt !== null) {
+        sessionStartTimestamp += now - celebrationPauseStartedAt;
+        sessionElapsedMs = now - sessionStartTimestamp;
+      }
+      isCelebrationPaused = false;
+      celebrationPauseStartedAt = null;
+      const shouldResumeSession = celebrationSessionWasActive && sessionStartTimestamp !== null;
+      celebrationSessionWasActive = false;
+      if (shouldResumeSession) {
+        renderSession();
+        startSessionTicker();
+      }
+    }
+
     function showRecordCelebration(ms, previousBestMs) {
       if (!recordCelebrationEl) return;
+      pauseSessionForCelebration();
+      const variant = VICTORY_VARIANTS[victoryVariantIndex % VICTORY_VARIANTS.length];
+      victoryVariantIndex += 1;
+      recordCelebrationEl.style.setProperty('--victory-accent', variant.accent);
+      recordCelebrationEl.style.setProperty('--victory-accent-2', variant.accent2);
+      if (victoryBadgeEl) victoryBadgeEl.textContent = variant.badge;
+      if (victoryIllustrationEl) victoryIllustrationEl.innerHTML = getVictoryIllustration(variant.illustration);
+      if (victoryTitleEl) victoryTitleEl.textContent = variant.title;
+      if (victoryMessageEl) victoryMessageEl.textContent = variant.message;
       if (victoryResultEl) {
         const improvement = formatRecordImprovement(ms - previousBestMs);
         victoryResultEl.textContent = formatTime(ms) + ' · лучше на ' + improvement + ' сек';
@@ -1204,18 +1384,32 @@
       if (victoryModeEl) {
         victoryModeEl.textContent = getBallsLabel(selectedBalls) + ' · ' + getHandsLabel(selectedHands) + ' · ' + getStyleLabel(selectedStyle);
       }
-      createVictoryConfetti();
+      createVictoryConfetti(variant);
       recordCelebrationEl.hidden = false;
       recordCelebrationEl.classList.remove('show');
       void recordCelebrationEl.offsetWidth;
       recordCelebrationEl.classList.add('show');
       playApplauseSound();
-      if (celebrationTimeoutId !== null) window.clearTimeout(celebrationTimeoutId);
-      celebrationTimeoutId = window.setTimeout(() => {
+      if (btnVictoryContinue) btnVictoryContinue.focus({ preventScroll: true });
+    }
+
+    function closeRecordCelebration(continueTraining) {
+      if (!isCelebrationPaused) return;
+      if (recordCelebrationEl) {
         recordCelebrationEl.classList.remove('show');
         recordCelebrationEl.hidden = true;
-        celebrationTimeoutId = null;
-      }, 3800);
+      }
+      if (victoryConfettiEl) victoryConfettiEl.innerHTML = '';
+      if (continueTraining) {
+        resumeSessionAfterCelebration();
+        beginAttempt();
+      } else {
+        isCelebrationPaused = false;
+        celebrationPauseStartedAt = null;
+        celebrationSessionWasActive = false;
+        resetSession(false);
+        updatePrimaryButton();
+      }
     }
 
     function beginCountdown(secs) {
@@ -1267,6 +1461,11 @@
     window.addEventListener('keydown', (e) => {
       // Ignore key repeat to avoid flicker on long press
       if (e.repeat) return;
+      if (isCelebrationPaused && e.key === 'Escape') {
+        e.preventDefault();
+        closeRecordCelebration(false);
+        return;
+      }
       // Ignore shortcuts when user interacts with inputs/controls (e.g., range slider)
       if (isTypingTarget(e.target)) return;
       if (e.code === 'Space' || e.key === ' ' || e.key === 'Spacebar') {
@@ -1286,6 +1485,12 @@
     if (btnStopCycle) btnStopCycle.addEventListener('click', stopCycle);
     if (btnClear) btnClear.addEventListener('click', clearResults);
     if (btnDownload) btnDownload.addEventListener('click', downloadTableScreenshot);
+    if (btnVictoryContinue) {
+      btnVictoryContinue.addEventListener('click', () => closeRecordCelebration(true));
+    }
+    if (btnVictoryFinish) {
+      btnVictoryFinish.addEventListener('click', () => closeRecordCelebration(false));
+    }
 
     if (modeSelectorsEl) {
       modeSelectorsEl.addEventListener('click', (event) => {
